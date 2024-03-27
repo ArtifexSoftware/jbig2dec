@@ -48,7 +48,7 @@ if test "x$ac_cv_want_libpng" != "xno"; then
   fi
   dnl libpng requires pow() which may be in libm
   AC_SEARCH_LIBS([pow], [m])
-  AC_CHECK_LIB([png], [png_create_write_struct], [
+  AC_CHECK_LIB([png16], [png_create_write_struct], [
     AC_CHECK_LIB([z], [deflate], [
       AC_DEFINE(HAVE_LIBPNG, 1, [Define if libpng is available (-lpng16)])
       PNG_LIBS="-lpng16 -lz"
