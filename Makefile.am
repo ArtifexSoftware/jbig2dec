@@ -10,14 +10,14 @@ include_HEADERS = jbig2.h
 
 AM_CFLAGS = $(XCFLAGS)
 
-libjbig2dec_la_LDFLAGS = -version-info @JBIG2DEC_LT_CURRENT@:@JBIG2DEC_LT_REVISION@:@JBIG2DEC_LT_AGE@ -no-undefined
+libjbig2dec_la_LDFLAGS = -version-info @JBIG2DEC_LT_CURRENT@:@JBIG2DEC_LT_REVISION@:@JBIG2DEC_LT_AGE@ -no-undefined -lpng16
 libjbig2dec_la_SOURCES = jbig2.c \
 	jbig2_arith.c jbig2_arith_int.c jbig2_arith_iaid.c jbig2_huffman.c jbig2_hufftab.c \
 	jbig2_segment.c jbig2_page.c \
 	jbig2_symbol_dict.c jbig2_text.c \
 	jbig2_generic.c jbig2_refinement.c jbig2_mmr.c \
 	jbig2_halftone.c \
-	jbig2_image.c jbig2_image_pbm.c \
+	jbig2_image.c jbig2_image_pbm.c jbig2_image_png.c \
 	os_types.h config_types.h config_win32.h \
 	jbig2.h jbig2_priv.h jbig2_image.h \
 	jbig2_arith.h jbig2_arith_iaid.h jbig2_arith_int.h \
