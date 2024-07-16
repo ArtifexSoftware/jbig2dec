@@ -28,7 +28,7 @@ libjbig2dec.a: $(LIB_OBJS)
 	ar cru $@ $^
 
 jbig2dec: $(APP_OBJS) libjbig2dec.a
-	$(CC) -o $@ $^ -lpng -lz
+	$(CC) -o $@ $^ -lpng16 -lz
 
 all: jbig2dec libjbig2dec.a
 
