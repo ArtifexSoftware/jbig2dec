@@ -30,7 +30,7 @@ test_huffman
 test_sha1
 
 # ignore cmake build directory
-build/
+build*/
 
 # ignore object files
 *.o
