@@ -157,7 +157,9 @@ class KnownFileHash(SelfTest):
     self.assertEqual(self.file_hash, sha1.hexdigest())
 
     # invoke jbig2dec on our file
-    instance = os.popen('./jbig2dec -q -o /dev/null --hash ' + self.file)
+    jbig2dec = os.environ.get('JBIG2DEC', './jbig2dec')
+    devnull = 'NUL' if os.name == 'nt' else '/dev/null'
+    instance = os.popen('%s -q -o %s --hash %s' % (jbig2dec, devnull, self.file))
     lines = instance.readlines()
     exit_code = instance.close()
     self.failIf(exit_code, 'jbig2dec should exit normally')
