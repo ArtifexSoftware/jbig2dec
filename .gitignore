@@ -29,6 +29,9 @@ test_arith
 test_huffman
 test_sha1
 
+# ignore cmake build directory
+build*/
+
 # ignore object files
 *.o
 *.lo

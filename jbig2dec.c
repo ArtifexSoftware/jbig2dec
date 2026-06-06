@@ -733,6 +733,7 @@ main(int argc, char **argv)
                     params.output_filename = make_output_filename(argv[filearg], ".png");
                     break;
 #endif
+                case jbig2dec_format_none:
                 case jbig2dec_format_pbm:
                     params.output_filename = make_output_filename(argv[filearg], ".pbm");
                     break;
