@@ -283,6 +283,17 @@ set_output_format(jbig2dec_params_t *params, const char *format)
     return 0;
 }
 
+static char *
+my_strdup(const char *s)
+{
+    size_t len = strlen(s);
+    char *d = malloc(len + 1);
+    if (!d)
+        return NULL;
+    memcpy(d, s, len + 1);
+    return d;
+}
+
 static int
 parse_options(int argc, char *argv[], jbig2dec_params_t *params)
 {
@@ -342,7 +353,7 @@ parse_options(int argc, char *argv[], jbig2dec_params_t *params)
                     free(params->output_filename);
                     params->output_filename = NULL;
             }
-            params->output_filename = strdup(optarg);
+            params->output_filename = my_strdup(optarg);
             break;
         case 't':
             set_output_format(params, optarg);
@@ -479,7 +490,7 @@ error_callback(void *error_callback_data, const char *message, Jbig2Severity sev
         state->last_message = NULL;
 
         if (message) {
-            state->last_message = strdup(message);
+            state->last_message = my_strdup(message);
             if (state->last_message == NULL) {
                 ret = fprintf(stderr, "jbig2dec WARNING could not duplicate message\n");
                 if (ret < 0)
