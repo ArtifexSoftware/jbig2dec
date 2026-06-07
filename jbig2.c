@@ -27,6 +27,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
+#include <stddef.h>
 
 #include "jbig2.h"
 #include "jbig2_priv.h"
@@ -88,18 +89,355 @@ jbig2_default_error(void *data, const char *msg, Jbig2Severity severity, uint32_
     }
 }
 
+struct jbig2_fmtbuf
+{
+    void *user;
+    void (*emit)(void *user, int c);
+};
+
+static inline void jbig2_fmtputc(struct jbig2_fmtbuf *out, int c)
+{
+    out->emit(out->user, c);
+}
+
+static const char *jbig2_hex_digits = "0123456789abcdef";
+static const char *jbig2_hex_digits_UC = "0123456789ABCDEF";
+
+
+static void jbig2_fmtuint32(struct jbig2_fmtbuf *out, unsigned int a, int s, int z, int w, int base, int q)
+{
+    char buf[40];
+    int i;
+    const char *hex_digits = jbig2_hex_digits;
+
+    if (base < 0)
+    {
+        base = -base;
+        hex_digits = jbig2_hex_digits_UC;
+    }
+
+    i = 0;
+    if (a == 0)
+        buf[i++] = '0';
+    while (a) {
+        buf[i++] = hex_digits[a % base];
+        a /= base;
+    }
+    if (s) {
+        if (z == '0')
+            while (i < w - 1)
+                buf[i++] = z;
+        buf[i++] = s;
+    }
+    while (i < w)
+        buf[i++] = z;
+    while (i > 0)
+    {
+        jbig2_fmtputc(out, buf[--i]);
+        if (q && i != 0 && i % 3 == 0)
+            jbig2_fmtputc(out, q);
+    }
+}
+
+static void jbig2_fmtuint64(struct jbig2_fmtbuf *out, uint64_t a, int s, int z, int w, int base, int q)
+{
+    char buf[80];
+    int i;
+    const char *hex_digits = jbig2_hex_digits;
+
+    if (base < 0)
+    {
+        base = -base;
+        hex_digits = jbig2_hex_digits_UC;
+    }
+
+    i = 0;
+    if (a == 0)
+        buf[i++] = '0';
+    while (a) {
+        buf[i++] = hex_digits[a % base];
+        a /= base;
+    }
+    if (s) {
+        if (z == '0')
+            while (i < w - 1)
+                buf[i++] = z;
+        buf[i++] = s;
+    }
+    while (i < w)
+        buf[i++] = z;
+    while (i > 0)
+    {
+        jbig2_fmtputc(out, buf[--i]);
+        if (q && i != 0 && i % 3 == 0)
+            jbig2_fmtputc(out, q);
+    }
+}
+
+static void jbig2_fmtint32(struct jbig2_fmtbuf *out, int value, int s, int z, int w, int base, int q)
+{
+    unsigned int a;
+
+    if (value < 0)
+    {
+        s = '-';
+        a = -value;
+    }
+    else if (s)
+    {
+        s = '+';
+        a = value;
+    }
+    else
+    {
+        s = 0;
+        a = value;
+    }
+    jbig2_fmtuint32(out, a, s, z, w, base, q);
+}
+
+static void jbig2_fmtint64(struct jbig2_fmtbuf *out, int64_t value, int s, int z, int w, int base, int q)
+{
+    uint64_t a;
+
+    if (value < 0)
+    {
+        s = '-';
+        a = -value;
+    }
+    else if (s)
+    {
+        s = '+';
+        a = value;
+    }
+    else
+    {
+        s = 0;
+        a = value;
+    }
+    jbig2_fmtuint64(out, a, s, z, w, base, q);
+}
+
+static void
+jbig2_format_string(void *user, void (*emit)(void *user, int c), const char *fmt, va_list args)
+{
+    struct jbig2_fmtbuf out;
+    int c, s, z, p, w, q;
+    int32_t i32;
+    int64_t i64;
+    const char *str;
+    size_t bits;
+
+    out.user = user;
+    out.emit = emit;
+
+    while ((c = *fmt++) != 0)
+    {
+        if (c == '%')
+        {
+            q = 0;
+            s = 0;
+            z = ' ';
+
+            /* flags */
+            while ((c = *fmt++) != 0)
+            {
+                /* plus sign */
+                if (c == '+')
+                    s = 1;
+                /* space sign */
+                else if (c == ' ')
+                    s = ' ';
+                /* zero padding */
+                else if (c == '0')
+                    z = '0';
+                /* comma separators */
+                else if (c == '\'')
+                    q = '\'';
+                else if (c == ',')
+                    q = ',';
+                else if (c == '_')
+                    q = '_';
+                /* TODO: '-' to left justify */
+                else
+                    break;
+            }
+            if (c == 0)
+                break;
+
+            /* width */
+            w = 0;
+            if (c == '*') {
+                c = *fmt++;
+                w = va_arg(args, int);
+            } else {
+                while (c >= '0' && c <= '9') {
+                    w = w * 10 + c - '0';
+                    c = *fmt++;
+                }
+            }
+            if (c == 0)
+                break;
+
+            /* precision */
+            p = 6;
+            if (c == '.') {
+                c = *fmt++;
+                if (c == 0)
+                    break;
+                if (c == '*') {
+                    c = *fmt++;
+                    p = va_arg(args, int);
+                } else {
+                    if (c >= '0' && c <= '9')
+                        p = 0;
+                    while (c >= '0' && c <= '9') {
+                        p = p * 10 + c - '0';
+                        c = *fmt++;
+                    }
+                }
+            }
+            if (c == 0)
+                break;
+
+            /* lengths */
+            bits = 0;
+            if (c == 'l') {
+                c = *fmt++;
+                bits = sizeof(int64_t) * 8;
+                if (c == 0)
+                    break;
+            }
+            if (c == 't') {
+                c = *fmt++;
+                bits = sizeof(ptrdiff_t) * 8;
+                if (c == 0)
+                    break;
+            }
+            if (c == 'z') {
+                c = *fmt++;
+                bits = sizeof(size_t) * 8;
+                if (c == 0)
+                    break;
+            }
+
+            switch (c) {
+                default:
+                    jbig2_fmtputc(&out, '%');
+                    jbig2_fmtputc(&out, c);
+                    break;
+                case '%':
+                    jbig2_fmtputc(&out, '%');
+                    break;
+
+                case 'c':
+                    c = va_arg(args, int);
+                    jbig2_fmtputc(&out, c);
+                    break;
+
+                case 'p':
+                    bits = 8 * sizeof(void *);
+                    z = '0';
+                    jbig2_fmtputc(&out, '0');
+                    jbig2_fmtputc(&out, 'x');
+                    q = 0;
+                    /* fallthrough */
+                case 'x':
+                    if (bits == 64)
+                    {
+                        i64 = va_arg(args, int64_t);
+                        jbig2_fmtuint64(&out, i64, 0, z, w, 16, q);
+                    }
+                    else
+                    {
+                        i32 = va_arg(args, int);
+                        jbig2_fmtuint32(&out, i32, 0, z, w, 16, q);
+                    }
+                    break;
+                case 'X':
+                    if (bits == 64)
+                    {
+                        i64 = va_arg(args, int64_t);
+                        jbig2_fmtuint64(&out, i64, 0, z, w, -16, q);
+                    }
+                    else
+                    {
+                        i32 = va_arg(args, int);
+                        jbig2_fmtuint32(&out, i32, 0, z, w, -16, q);
+                    }
+                    break;
+                case 'd':
+                case 'i':
+                    if (bits == 64)
+                    {
+                        i64 = va_arg(args, int64_t);
+                        jbig2_fmtint64(&out, i64, s, z, w, 10, q);
+                    }
+                    else
+                    {
+                        i32 = va_arg(args, int);
+                        jbig2_fmtint32(&out, i32, s, z, w, 10, q);
+                    }
+                    break;
+                case 'u':
+                    if (bits == 64)
+                    {
+                        i64 = va_arg(args, int64_t);
+                        jbig2_fmtuint64(&out, i64, 0, z, w, 10, q);
+                    }
+                    else
+                    {
+                        i32 = va_arg(args, int);
+                        jbig2_fmtuint32(&out, i32, 0, z, w, 10, q);
+                    }
+                    break;
+                case 's':
+                    str = va_arg(args, const char*);
+                    if (!str)
+                        str = "(null)";
+                    while ((c = *str++) != 0)
+                        jbig2_fmtputc(&out, c);
+                    break;
+            }
+        }
+        else
+        {
+            jbig2_fmtputc(&out, c);
+        }
+    }
+}
+
+struct jbig2_snprintf_buffer
+{
+    char *p;
+    size_t s, n;
+};
+
+static void jbig2_error_emit(void *out_, int c)
+{
+    struct jbig2_snprintf_buffer *out = out_;
+    if (out->n < out->s)
+        out->p[out->n] = c;
+    ++(out->n);
+}
+
 int
 jbig2_error(Jbig2Ctx *ctx, Jbig2Severity severity, uint32_t segment_number, const char *fmt, ...)
 {
     char buf[1024];
     va_list ap;
-    int n;
+    struct jbig2_snprintf_buffer out;
+
+    out.p = &buf[0];
+    out.s = sizeof(buf) - 1;
+    out.n = 0;
 
     va_start(ap, fmt);
-    n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    jbig2_format_string(&out, jbig2_error_emit, fmt, ap);
+    out.p[out.n < sizeof(buf) ? out.n : sizeof(buf) - 1] = '\0';
     va_end(ap);
-    if (n < 0 || n == sizeof(buf))
-        ctx->error_callback(ctx->error_callback_data, "failed to generate error string", severity, segment_number);
+    if (out.n == sizeof(buf))
+        ctx->error_callback(ctx->error_callback_data, "failed to format error string", severity, segment_number);
     else
         ctx->error_callback(ctx->error_callback_data, buf, severity, segment_number);
     return -1;
