@@ -1732,6 +1732,7 @@ void Memento_info(void *addr)
 
 #ifdef MEMENTO_HAS_FORK
 #include <unistd.h>
+#include <sys/select.h>
 #include <sys/wait.h>
 #include <time.h>
 #ifdef MEMENTO_STACKTRACE_METHOD
@@ -1809,14 +1810,17 @@ static int squeeze(void)
 
     /* Wait for pid to finish, with a timeout. */
     {
-        struct timespec tm = { 0, 10 * 1000 * 1000 }; /* 10ms = 100th sec */
+        struct timeval tv;
+        long current_delay = 10 * 1000; /* 10ms in microseconds */
         int timeout = 30 * 1000 * 1000; /* time out in microseconds! */
         while (waitpid(pid, &status, WNOHANG) == 0) {
-            nanosleep(&tm, NULL);
-            timeout -= (tm.tv_nsec/1000);
-            tm.tv_nsec *= 2;
-            if (tm.tv_nsec > 999999999)
-                tm.tv_nsec = 999999999;
+            tv.tv_sec = current_delay / 1000000;
+            tv.tv_usec = current_delay % 1000000;
+            select(0, NULL, NULL, NULL, &tv);
+            timeout -= current_delay;
+            current_delay *= 2;
+            if (current_delay > 1000000)
+                current_delay = 1000000;
             if (timeout <= 0) {
                 char text[32];
                 fprintf(stderr, "Child is taking a long time to die. Killing it.\n");
