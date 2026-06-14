@@ -74,14 +74,14 @@ jbig2_dump_symbol_dict(Jbig2Ctx *ctx, Jbig2Segment *segment)
 {
     Jbig2SymbolDict *dict = (Jbig2SymbolDict *) segment->result;
     uint32_t index;
-    char filename[24];
+    char filename[100];
     int code;
 
     if (dict == NULL)
         return;
     jbig2_error(ctx, JBIG2_SEVERITY_INFO, segment->number, "dumping symbol dictionary as %d individual png files", dict->n_symbols);
     for (index = 0; index < dict->n_symbols; index++) {
-        snprintf(filename, sizeof(filename), "symbol_%02d-%04d.png", segment->number, index);
+        sprintf(filename, "symbol_%02u-%04u.png", segment->number, index);
         jbig2_error(ctx, JBIG2_SEVERITY_DEBUG, segment->number, "dumping symbol %d/%d as '%s'", index, dict->n_symbols, filename);
 #ifdef HAVE_LIBPNG
         code = jbig2_image_write_png_file(dict->glyphs[index], filename);
@@ -621,11 +621,11 @@ jbig2_decode_symbol_dict(Jbig2Ctx *ctx,
 
 #ifdef OUTPUT_PBM
                 {
-                    char name[64];
+                    char name[100];
                     FILE *out;
                     int code;
 
-                    snprintf(name, 64, "sd.%04d.%04d.pbm", segment->number, NSYMSDECODED);
+                    sprintf(name, "sd.%04u.%04u.pbm", segment->number, NSYMSDECODED);
                     out = fopen(name, "wb");
                     code = jbig2_image_write_pbm(SDNEWSYMS->glyphs[NSYMSDECODED], out);
                     fclose(out);

@@ -248,12 +248,15 @@ hash_print(jbig2dec_params_t *params, FILE *out)
 {
     unsigned char md[SHA1_DIGEST_SIZE];
     char digest[2 * SHA1_DIGEST_SIZE + 1];
+    const char *hexdigit = "0123456789abcdef";
     int i;
 
     SHA1_Final(params->hash_ctx, md);
     for (i = 0; i < SHA1_DIGEST_SIZE; i++) {
-        snprintf(&(digest[2 * i]), 3, "%02x", md[i]);
+        digest[2 * i + 0] = hexdigit[(md[i] >> 4) & 0xf];
+        digest[2 * i + 1] = hexdigit[(md[i] >> 0) & 0xf];
     }
+    digest[2 * SHA1_DIGEST_SIZE] = '\0';
     fprintf(out, "%s", digest);
 }
 

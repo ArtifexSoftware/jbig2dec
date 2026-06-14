@@ -92,14 +92,14 @@ jbig2_decode_refinement_template0_unopt(Jbig2Ctx *ctx,
 #ifdef JBIG2_DEBUG_DUMP
     {
         static unsigned int count = 0;
-        char name[32];
+        char name[100];
         int code;
 
-        snprintf(name, 32, "refin-%d.pbm", count);
+        sprintf(name, "refin-%u.pbm", count);
         code = jbig2_image_write_pbm_file(ref, name);
         if (code < 0)
             return jbig2_error(ctx, JBIG2_SEVERITY_WARNING, segment->number, "failed write refinement input");
-        snprintf(name, 32, "refout-%d.pbm", count);
+        sprintf(name, "refout-%u.pbm", count);
         code = jbig2_image_write_pbm_file(image, name);
         if (code < 0)
             return jbig2_error(ctx, JBIG2_SEVERITY_WARNING, segment->number, "failed write refinement output");
@@ -147,14 +147,14 @@ jbig2_decode_refinement_template1_unopt(Jbig2Ctx *ctx,
 #ifdef JBIG2_DEBUG_DUMP
     {
         static unsigned int count = 0;
-        char name[32];
+        char name[100];
         int code;
 
-        snprintf(name, 32, "refin-%d.pbm", count);
+        sprintf(name, "refin-%u.pbm", count);
         code = jbig2_image_write_pbm_file(ref, name);
         if (code < 0)
             return jbig2_error(ctx, JBIG2_SEVERITY_WARNING, segment->number, "failed to write refinement input");
-        snprintf(name, 32, "refout-%d.pbm", count);
+        sprintf(name, "refout-%u.pbm", count);
         code = jbig2_image_write_pbm_file(image, name);
         if (code < 0)
             return jbig2_error(ctx, JBIG2_SEVERITY_WARNING, segment->number, "failed to write refinement output");
