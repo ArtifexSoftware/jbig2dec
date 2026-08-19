@@ -35,6 +35,27 @@
 
 /* library internals */
 
+/* Atomic reference counting.
+
+   Objects reachable from a shared Jbig2GlobalCtx (the glyph images of
+   global symbol dictionaries) are referenced and released concurrently
+   when several threads decode with the same globals, so their reference
+   counts must be updated atomically. The decrement synchronizes with
+   other releases so the thread that frees an object observes all prior
+   writes to it. */
+#if defined(_MSC_VER)
+#include <intrin.h>
+#define jbig2_atomic_inc(p) _InterlockedIncrement((volatile long *)(p))
+#define jbig2_atomic_dec(p) _InterlockedDecrement((volatile long *)(p))
+#elif defined(__GNUC__) || defined(__clang__)
+#define jbig2_atomic_inc(p) __atomic_add_fetch((p), 1, __ATOMIC_RELAXED)
+#define jbig2_atomic_dec(p) __atomic_sub_fetch((p), 1, __ATOMIC_ACQ_REL)
+#else
+/* Single-threaded fallback. */
+#define jbig2_atomic_inc(p) (++*(p))
+#define jbig2_atomic_dec(p) (--*(p))
+#endif
+
 /* If we don't have a definition for inline, make it nothing so the code will compile */
 #ifndef inline
 #define inline
