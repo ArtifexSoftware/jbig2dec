@@ -77,7 +77,7 @@ jbig2_image_reference(Jbig2Ctx *ctx, Jbig2Image *image)
 {
     (void) ctx;
     if (image)
-        image->refcount++;
+        jbig2_atomic_inc(&image->refcount);
     return image;
 }
 
@@ -87,8 +87,7 @@ jbig2_image_release(Jbig2Ctx *ctx, Jbig2Image *image)
 {
     if (image == NULL)
         return;
-    image->refcount--;
-    if (image->refcount == 0)
+    if (jbig2_atomic_dec(&image->refcount) == 0)
         jbig2_image_free(ctx, image);
 }
 
